@@ -35,6 +35,11 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/games", tags=["games"])
 
 
+def _plain(text: str) -> str:
+    """Text from a request, for a log line: no line breaks, so it can't fake another log entry."""
+    return text.replace("\r", "").replace("\n", "")
+
+
 def _player_name(user: User, fallback: str = "Player") -> str:
     return (user.character or {}).get("name") or user.name or fallback
 
@@ -115,7 +120,7 @@ def _put_live(db: Session, store: GameStore, game: Game | None, name: str, owner
     try:
         store.put_game(name, files)
     except Exception:
-        log.exception("Uploading game %s failed", name)
+        log.exception("Uploading game %s failed", _plain(name))
         if created:
             db.delete(game)
             db.commit()
@@ -514,7 +519,7 @@ def upload_cover(
     try:
         store.put_file(name, covers.COVER_FILE, cover, "image/webp")
     except Exception:
-        log.exception("Uploading the cover of %s failed", name)
+        log.exception("Uploading the cover of %s failed", _plain(name))
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Couldn't save the picture, try again")
     game.cover, game.cover_at = covers.COVER_FILE, datetime.now(timezone.utc)
     record(db, user, "developer", "game.cover_changed", name)
