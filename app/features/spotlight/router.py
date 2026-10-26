@@ -165,5 +165,5 @@ def spotlight_page(db: Session = Depends(get_db)):
         )
     else:
         week = '<p class="note">No Game of the Week picked yet.</p>'
-    body = f'{pages.NAV}<main><section class="container spotlight-page"><h1>Spotlight</h1>{daily}{week}</section></main>{pages.FOOTER}'
+    body = f'{pages.NAV}<main><section class="container spotlight-page"><h1>Spotlight</h1>{daily}{week}</section></main>{pages.site_footer()}'
     return Response(body, media_type="text/html; charset=utf-8", headers={"Cache-Control": "public, max-age=60"})

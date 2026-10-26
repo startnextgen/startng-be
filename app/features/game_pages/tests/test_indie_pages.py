@@ -155,7 +155,8 @@ def test_everything_answers_404_while_the_flag_is_off(env, monkeypatch):
     assert client.get(f"/indie/{game_id}/pages").status_code == 404
     page = client.get(f"/pages/creators/{game_id}").text  # the game's own page has no block, and the sitemap no addresses
     assert "More about this game" not in page
-    assert "/about" not in client.get("/pages/sitemap.xml").text
+    sitemap = client.get("/pages/sitemap.xml").text
+    assert "/about</loc>" in sitemap and f"/creators/{game_id}-moon-garden/about" not in sitemap  # the site's own About, but no game's
 
 
 def test_the_pages_are_linked_and_listed(env):

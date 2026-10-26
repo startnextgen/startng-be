@@ -187,6 +187,6 @@ def leaderboard_page(db: Session = Depends(get_db)):
     body = (
         f'{pages.NAV}<main><section class="container creator-page"><h1>Top creators</h1>'
         '<p class="lead-sm">The people whose games the most different players opened in the last 30 days.</p>'
-        f"{board}</section></main>{pages.FOOTER}"
+        f"{board}</section></main>{pages.site_footer()}"
     )
     return Response(body, media_type="text/html; charset=utf-8", headers={"Cache-Control": "public, max-age=60"})

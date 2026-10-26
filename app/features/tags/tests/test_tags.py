@@ -422,3 +422,12 @@ def test_choices_endpoint_and_reviewed_indie_file(env):
     service.indie_reviewed.cache_clear()
     data = json.loads(service.INDIE_REVIEWED_FILE.read_text())
     assert data and all(1 <= len(s) <= service.CREATOR_MAX and all(x in service._CHOOSABLE for x in s) for s in data.values())
+
+
+# ---- the footer on server-written pages
+
+def test_the_footer_is_the_new_one_on_server_pages(env):
+    client, _, _ = env
+    html = client.get("/pages/categories").text
+    assert "Built by the HNG community" not in html
+    assert 'class="container site-footer"' in html and 'href="/leaderboard"' in html and 'href="/categories">Categories<' in html and "Docs for your AI" in html

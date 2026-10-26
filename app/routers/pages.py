@@ -31,6 +31,7 @@ from .. import tournaments
 from ..config import settings
 from ..db import get_db
 from ..models import Game, IndieGame
+from ..server_html import site_footer
 from ..storage import game_url
 from .games import _cover_url, _player_name
 
@@ -41,7 +42,7 @@ SEO_BLOCK = re.compile(r"<!--seo-->[\s\S]*?<!--/seo-->")
 ROOT = '<div id="root"></div>'
 SHARE_IMAGE = "/hangout-cover.jpg"  # used when a game has no cover
 SHELL_SECONDS = 300
-FIXED_PAGES = ["/", "/games", "/creators", "/tournament", "/leaderboard", "/hangout", "/docs"]
+FIXED_PAGES = ["/", "/games", "/creators", "/tournament", "/leaderboard", "/hangout", "/docs", "/about"]
 # Pages of features (app/features) that anyone can read, listed while the feature is on: {feature: path}.
 FEATURE_PAGES = {"spotlight": "/spotlight", "wardrobe": "/shop", "creator_hub": "/by", "private_tournaments": "/friends"}
 
@@ -243,7 +244,6 @@ NAV = (
     '<nav aria-label="Pages"><a href="/games">Games</a><a href="/tournament">Tournament</a>'
     '<a href="/creators">Creators</a><a href="/docs">Docs</a></nav></header>'
 )
-FOOTER = '<footer class="container footer"><span>start<span>.ng</span></span><span>Built by the HNG community</span></footer>'
 
 
 def _visible_games(db: Session) -> list[Game]:
@@ -264,7 +264,7 @@ def _home_body(games: list[Game]) -> str:
     az = f'<details class="az-games"><summary>Every game on start.ng, A to Z ({total})</summary><ul>{links}</ul></details>' if games else ""
     see_all = f'<div class="see-all"><a class="btn" href="/games">See all {total} games →</a></div>' if total > HOME_GAMES else ""
     steps = "".join(f"<li><b>{_esc(t)}</b><span>{text}</span></li>" for t, text in HOW_STEPS)
-    about = "".join(f"<p>{_esc(p)}</p>" for p in HOME_ABOUT)
+    about = "".join(f"<p>{_esc(p)}</p>" for p in HOME_ABOUT) + '<p><a href="/about">More about start.ng →</a></p>'
     questions = "".join(f"<details><summary>{_esc(q)}</summary><p>{_esc(a)}</p></details>" for q, a in HOME_QUESTIONS)
     return (
         f"{NAV}<main>"
@@ -279,7 +279,7 @@ def _home_body(games: list[Game]) -> str:
         '<a class="btn ghost" href="/docs.md">Docs for your AI (.md)</a></div></section>'
         f'<section id="about" class="container about"><h2>About start.ng</h2>{about}'
         f'<h3>Questions</h3><div class="faq">{questions}</div></section>'
-        f"</main>{FOOTER}"
+        f"</main>{site_footer()}"
     )
 
 
@@ -341,7 +341,7 @@ def _games_body(games: list[Game], page: int) -> str | None:
         '<section id="games" class="container all-games"><div class="section-head"><h1>All games from the community</h1></div>'
         f'<div class="list-tools"><span class="count">{_esc(count)}</span></div>{empty}<div class="grid">{items}</div>'
         f"{_pagination(page, pages)}</section>"
-        f"</main>{FOOTER}"
+        f"</main>{site_footer()}"
     )
 
 
@@ -390,7 +390,7 @@ def _creators_body(games: list[IndieGame], page: int) -> str | None:
         "<div class=\"creators-intro\"><p>Made and hosted by creators outside start.ng. Tap a card to read about a game, or play it on the creator's own site.</p></div>"
         f'<div class="list-tools"><span class="count">{_esc(count)}</span></div>{empty}<div class="grid">{items}</div>'
         f'{_pagination(page, pages, "/creators")}</section>'
-        f"</main>{FOOTER}"
+        f"</main>{site_footer()}"
     )
 
 
@@ -466,7 +466,7 @@ def _tournament_body(db: Session) -> str:
     )
     if t is None:
         empty = "<p class=\"empty\">No tournament today: there aren't enough games with leaderboards yet. Check back tomorrow.</p>"
-        return f'{NAV}<main><section class="container tournament-page">{head}{empty}</section></main>{FOOTER}'
+        return f'{NAV}<main><section class="container tournament-page">{head}{empty}</section></main>{site_footer()}'
 
     res = tournaments.results(db, t)
     status = (
@@ -508,7 +508,7 @@ def _tournament_body(db: Session) -> str:
         f'<div class="grid tournament-games">{"".join(cards)}</div><div class="tournament-columns">'
         f'<section aria-labelledby="standings-heading"><h2 id="standings-heading">Standings</h2>{standings}</section>'
         f'<section aria-labelledby="winners-heading"><h2 id="winners-heading">Past winners</h2>{past_html}</section>'
-        f"</div></section></main>{FOOTER}"
+        f"</div></section></main>{site_footer()}"
     )
 
 
@@ -539,7 +539,7 @@ def leaderboard_page(period: Literal["all", "week"] = "all", db: Session = Depen
     body = (
         f'{NAV}<main><section class="container tournament-page"><div class="section-head"><div><h1>Leaderboard</h1>'
         "<p class=\"tournament-sub\">Points from the daily tournaments. <a href=\"/tournament\">Today's tournament →</a></p></div></div>"
-        f"{tabs}{board}</section></main>{FOOTER}"
+        f"{tabs}{board}</section></main>{site_footer()}"
     )
     return Response(body, media_type="text/html; charset=utf-8", headers={"Cache-Control": "public, max-age=60"})
 
@@ -561,7 +561,7 @@ def friends_page():
         "<a href=\"/tournament\">Today's tournament →</a></p></div></div>"
         f"<p>Name it, pick the games, and choose how long it runs: {FRIENDS_LENGTHS}. Only the friends you invite are in it.</p>"
         '<p class="note">It starts as soon as you tap the button. Scores count from the moment each player joins.</p>'
-        f"</section></main>{FOOTER}"
+        f"</section></main>{site_footer()}"
     )
     return Response(body, media_type="text/html; charset=utf-8", headers={"Cache-Control": "public, max-age=60"})
 

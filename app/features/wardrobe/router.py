@@ -166,6 +166,6 @@ def shop_page(db: Session = Depends(get_db)):
         '<span class="shop-restock">New stock every day at midnight, Nigeria time</span></header>'
         f'<h3 class="wd-heading">Featured today</h3><ul class="wd-grid featured">{tiles(today.featured, True)}</ul>'
         f'<h3 class="wd-heading">Everything else</h3><ul class="wd-grid">{tiles(today.items, False)}</ul>'
-        f"</section></main>{pages.FOOTER}"
+        f"</section></main>{pages.site_footer()}"
     )
     return Response(body, media_type="text/html; charset=utf-8", headers={"Cache-Control": "public, max-age=60"})

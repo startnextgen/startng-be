@@ -191,6 +191,7 @@ def test_an_empty_room_closes_after_the_rejoin_time(env):
     client, ids, now = env
     with client.websocket_connect(url(ids["ada"])) as ada:
         code = ada.receive_json()["room"]
+        ada.close(1006)  # dropped by the network (closing on purpose with 1000 cancels the room at once)
     for _ in range(100):  # the server notices the connection closing a moment later
         if core.rooms[code].empty_since is not None:
             break
@@ -390,3 +391,23 @@ def test_a_hosts_rematch_waits_again_and_is_not_closed_for_the_first_wait(env):
     now[0] += core.WAIT_FOR_FRIEND + 1
     client.portal.call(core.sweep)
     assert room.code not in core.rooms
+
+
+def test_cancelling_a_room_nobody_joined_frees_the_player(env):
+    client, ids, _ = env
+    with client.websocket_connect(url(ids["ada"])) as ada:
+        first = ada.receive_json()["room"]
+        ada.close(1000)  # the kit's leave(): Cancel
+    assert first not in core.rooms and (GAME, ids["ada"]) not in core.user_room
+    with client.websocket_connect(url(ids["ada"], "match")) as ada2:
+        assert ada2.receive_json() == {"type": "waiting"}  # in the matchmaking line, not back in the old room
+
+
+def test_a_dropped_connection_keeps_the_waiting_room(env):
+    client, ids, _ = env
+    with client.websocket_connect(url(ids["ada"])) as ada:
+        first = ada.receive_json()["room"]
+        ada.close(1006)  # the network dropped it
+    assert first in core.rooms
+    with client.websocket_connect(url(ids["ada"])) as ada2:
+        assert ada2.receive_json()["room"] == first  # back in the same room, as before

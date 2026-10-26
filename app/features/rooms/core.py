@@ -126,6 +126,7 @@ class Conn:
     queued_at: float | None = None
     offered: bool = False
     window: deque = field(default_factory=deque)  # when the last messages arrived, for the rate limit
+    left: bool = False  # closed on purpose (code 1000, the kit's leave()), not dropped by the network
 
 
 @dataclass
@@ -538,6 +539,7 @@ async def pump(conn: Conn) -> None:
         except RuntimeError:
             return
         if event["type"] == "websocket.disconnect":
+            conn.left = event.get("code") == 1000
             return
         text = event.get("text")
         if not text:
@@ -599,6 +601,9 @@ async def dropped(conn: Conn) -> None:
         return
     seat = room.seats[conn.seat]
     if seat.conn is not conn:  # already replaced by a newer connection
+        return
+    if conn.left and room.status == "waiting" and not relay(room.rules) and all(s.bot for i, s in enumerate(room.seats) if i != conn.seat):
+        await close_room(room, "left")  # they cancelled before anyone else came: free them for a new room or a match
         return
     seat.conn, seat.away_since = None, clock()
     if all(s.bot or s.conn is None for s in room.seats):
