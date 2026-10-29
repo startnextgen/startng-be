@@ -1,5 +1,5 @@
 # ---- Stage 1: malware gate (build fails here if any signature matches) ----
-FROM alpine:3.20 AS malware-scan
+FROM alpine:3.24 AS malware-scan
 WORKDIR /scan
 COPY . .
 RUN sh malware-scan.sh /scan && touch /scan/.scan-passed
