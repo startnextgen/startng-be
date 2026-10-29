@@ -110,3 +110,11 @@ def overall_leaderboard(
                      points=r.points, wins=r.wins, firsts=r.firsts)
         for i, r in enumerate(tournaments.overall(db, period, limit), start=1)
     ]
+
+@router.get("/{tournament_id}", response_model=TournamentOut)
+def tournament_result(tournament_id: int, db: Session = Depends(get_db)):
+    """The full, read-only results of a specific finished tournament."""
+    t = db.get(Tournament, tournament_id)
+    if not t or t.finished_at is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tournament not found or not finished yet")
+    return _out(db, t, user=None)

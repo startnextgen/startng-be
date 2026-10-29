@@ -166,6 +166,8 @@ class GameOut(BaseModel):
     plays: int = 0
     # Only in /games/mine: why it's hidden from start.ng ("reported", "flagged", "blocked"; app/admin.py), or None
     hidden: str | None = None
+    # Whether the creator has published more than 5 high-quality games
+    is_verified: bool = False
 
 
 # Highest score a game can save; anything above is treated as a bad request.

@@ -347,3 +347,10 @@ def test_friends_page_text_only_while_the_feature_is_on(env, monkeypatch):
     text = client.get("/pages/friends").text
     assert "<h1>Tournament with friends</h1>" in text and "Pick up to 5 games" in text
     assert "1 day, 3 days, 1 week, 2 weeks or 1 month" in text and "<html" not in text
+
+
+def test_request_text_has_no_line_breaks_in_a_log_line():
+    from app.routers.games import _plain
+
+    assert _plain("lane-dash\r\nINFO fake entry") == "lane-dashINFO fake entry"
+    assert _plain("lane-dash") == "lane-dash"
