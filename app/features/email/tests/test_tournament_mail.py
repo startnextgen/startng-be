@@ -195,3 +195,53 @@ def test_not_announced_late_or_while_off(env, monkeypatch):
     clock.at = END + timedelta(hours=4)
     with Session() as db:
         assert tournament_mail.tick(db) is False
+
+
+def test_the_reminder_goes_out_once_10_minutes_before(env):
+    clock, Session, ids = env
+    opt_in(Session, ids, "ada", ["reminder"])
+    opt_in(Session, ids, "tunde", ["tournament"])  # the day's email only: no reminder
+    clock.at = END - timedelta(minutes=11)  # 17:49: too early
+    with Session() as db:
+        assert tournament_mail.remind(db) is False
+    clock.at = END - timedelta(minutes=9)  # 17:51
+    with Session() as db:
+        assert tournament_mail.remind(db) is True
+        assert tournament_mail.remind(db) is False  # once per tournament
+    assert emails(Session) == {"ada@example.com": ["tournament_reminder"]}
+    with Session() as db:
+        sent = LogProvider()
+        service.send_due(db, sent, at=clock.at)  # outside the cap: it doesn't wait for the merge window
+    (msg,) = sent.sent
+    assert msg.to == "ada@example.com"
+    assert msg.subject == "The start.ng tournament starts in 10 minutes"
+    assert "6:00 PM (UTC+1)" in msg.text and "https://start.ng/tournament" in msg.text
+
+
+def test_the_reminder_does_not_use_up_the_days_email(env):
+    clock, Session, ids = env
+    opt_in(Session, ids, "ada", ["reminder", "tournament"])
+    clock.at = END - timedelta(minutes=5)
+    with Session() as db:
+        assert tournament_mail.remind(db) is True
+        service.send_due(db, LogProvider(), at=clock.at)
+    clock.at = END + timedelta(minutes=1)  # 18:00: the day's email still goes out
+    with Session() as db:
+        assert tournament_mail.tick(db) is True
+        sent = LogProvider()
+        service.send_due(db, sent, at=clock.at + timedelta(minutes=11))
+    assert [m.to for m in sent.sent] == ["ada@example.com"]
+    assert emails(Session)["ada@example.com"] == ["tournament_reminder", "tournament_day"]
+
+
+def test_no_reminder_after_the_start_or_while_off(env, monkeypatch):
+    clock, Session, ids = env
+    opt_in(Session, ids, "ada", ["reminder"])
+    clock.at = END + timedelta(minutes=1)  # just started: 23h59m to the next one
+    with Session() as db:
+        assert tournament_mail.remind(db) is False
+    monkeypatch.setattr(settings, "features", "")
+    clock.at = END - timedelta(minutes=5)
+    with Session() as db:
+        tournament_mail.remind(db)
+    assert emails(Session) == {}

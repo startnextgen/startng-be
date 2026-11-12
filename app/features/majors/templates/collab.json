@@ -1,0 +1,23 @@
+{
+  "label": "Blank collaboration",
+  "note": "Start here for any partner: change every line in CAPITALS, pick the games and set the dates.",
+  "major": {
+    "slug": "partner-name",
+    "title": "PARTNER NAME Major",
+    "tagline": "ONE LINE: WHAT PLAYERS CAN WIN AND FROM WHOM.",
+    "about": "TWO OR THREE SENTENCES ABOUT THE PARTNER OR THE EVENT: WHAT IT IS, WHEN AND WHERE.",
+    "partner_name": "PARTNER NAME",
+    "partner_url": "https://example.com",
+    "partner_logo_url": null,
+    "cta_label": "Visit PARTNER",
+    "cta_url": "https://example.com",
+    "prizes": [
+      { "place": 1, "prize": "FIRST PRIZE" },
+      { "place": 2, "prize": "SECOND PRIZE" },
+      { "place": 3, "prize": "THIRD PRIZE" }
+    ],
+    "games": [],
+    "starts_at": null,
+    "ends_at": null
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "label": "Tech Ember Fest: top 3 win festival tickets",
+  "note": "The first major. The top 3 on the standings each win a solo ticket. Twenty games, so there is something for everyone and one lucky game can't decide it. It runs from Friday 20 to Sunday 22 November (Nigeria time), two weeks before the festival on 5 December, so winners get their tickets in time.",
+  "major": {
+    "slug": "techemberfest",
+    "title": "Tech Ember Fest Major",
+    "tagline": "Twenty games, one weekend. The top 3 each win a ticket to Tech Ember Fest, Lagos, on 5 December.",
+    "about": "Tech Ember Fest is a day outdoors with games, music, food and the people behind Lagos tech: Saturday 5 December 2026, 4 PM to 11 PM, at Crystal Park, Ozone, Yaba. You don't need to work in tech to have a good time.",
+    "partner_name": "Tech Ember Fest",
+    "partner_url": "https://techemberfest.com",
+    "partner_logo_url": "https://techemberfest.com/apple-icon.png",
+    "cta_label": "Get tickets",
+    "cta_url": "https://techemberfest.com/tickets",
+    "prizes": [
+      {
+        "place": 1,
+        "prize": "A solo ticket to Tech Ember Fest"
+      },
+      {
+        "place": 2,
+        "prize": "A solo ticket to Tech Ember Fest"
+      },
+      {
+        "place": 3,
+        "prize": "A solo ticket to Tech Ember Fest"
+      }
+    ],
+    "games": [
+      "lagos-bike-rush",
+      "relic-rush-3d",
+      "naija-penalty",
+      "perihelion",
+      "ember-dash",
+      "onithsa-market-run",
+      "lagos-market-run",
+      "gidi-hop",
+      "downshaft",
+      "sky-hopper",
+      "flying-human",
+      "coin-catcher",
+      "naija-market-hustle",
+      "coconut-dodge",
+      "owambe",
+      "maths-escape",
+      "lagos-crossing",
+      "inkbreak",
+      "tesla-skyrun",
+      "orbit-run"
+    ],
+    "starts_at": "2026-11-19T23:00:00+00:00",
+    "ends_at": "2026-11-22T23:00:00+00:00"
+  }
+}

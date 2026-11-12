@@ -44,6 +44,7 @@ FEATURES: list[str] = [
     "rooms",  # refereed multiplayer games: rooms with a code, matchmaking and bots (Hamzat)
     "tags",  # tags and category pages (Chloe)
     "game_pages",  # about, how to play, FAQ and walkthrough pages of games (Chloe)
+    "majors",  # partner tournaments with prizes, made from a template (Kaka)
 ]
 
 _loaded: dict[str, ModuleType] = {}

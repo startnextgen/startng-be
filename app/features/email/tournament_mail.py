@@ -25,6 +25,7 @@ from .service import Note, esc
 log = logging.getLogger(__name__)
 
 ANNOUNCE_WITHIN = timedelta(hours=3)  # a tournament that started longer ago than this isn't announced any more
+REMIND_BEFORE = timedelta(minutes=10)  # the reminder goes out this long before the next tournament starts (Ziki #60)
 
 
 def _title(name: str) -> str:
@@ -210,8 +211,22 @@ def render_result(d: dict) -> Note:
     return Note(subject, html, f"{subject}\n\n{line}\n\nTry again today: {d['link']}")
 
 
+def render_reminder(d: dict) -> Note:
+    subject = "The start.ng tournament starts in 10 minutes"
+    line = f"A new tournament starts at {d['starts']}: new games, 24 hours, one winner. Be there when it opens."
+    html = (
+        f'{_eyebrow("Tournament reminder")}'
+        f'<h1 style="margin:0 0 12px;font:800 31px/1.15 {service.FONT};letter-spacing:-.045em;color:{service.INK}">'
+        f'{esc(subject)}</h1>'
+        f'<p style="margin:0;font:400 15px/1.6 {service.FONT};color:{service.MUTED}">{esc(line)}</p>'
+        f'{_button(d["link"], "Go to the tournament")}'
+    )
+    return Note(subject, html, f"{subject}\n\n{line}\n\nGo to the tournament: {d['link']}")
+
+
 service.register_kind("tournament_day", "tournament", render_day)
 service.register_kind("tournament_result", "results", render_result)
+service.register_kind("tournament_reminder", "reminder", render_reminder, capped=False)  # at once: it's about a time
 
 
 def _link() -> str:
@@ -267,5 +282,30 @@ def tick(db: Session, at: datetime | None = None) -> bool:
         "games": [{"name": _title(g.game_name), "slug": g.game_name, "cover_url": _cover_url(g.game)} for g in t.games],
         "ends": _local_time(t.ends_at), "link": _link(), "winner": winner, "players": players,
     }, db=db)
+    db.commit()
+    return True
+
+
+# ---- the reminder: once per tournament, 10 minutes before it starts (Ziki #60)
+
+
+def remind(db: Session, at: datetime | None = None) -> bool:
+    """Email everyone on the reminder topic once, in the 10 minutes before the next tournament starts. Each tournament
+    starts as the one before ends (6 PM, start.ng's time), so this works whether or not the next one has been made.
+    Returns whether it sent one."""
+    at = at or tournaments.now()
+    starts = tournaments.window(at)[1]
+    if not timedelta() < starts - tournaments.utc(at) <= REMIND_BEFORE:
+        return False
+    key = f"reminder:{starts.isoformat()}"
+    if db.get(Announcement, key) is not None:
+        return False
+    db.add(Announcement(key=key))
+    try:
+        db.commit()
+    except IntegrityError:  # another server sent it
+        db.rollback()
+        return False
+    service.broadcast("reminder", "tournament_reminder", {"starts": _local_time(starts), "link": _link()}, db=db)
     db.commit()
     return True

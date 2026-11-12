@@ -64,6 +64,35 @@ Every new feature lives in its own folder with one owner, so nobody edits the sa
 8. **Migrations** start at `0031`; renumber right before merging. Tests: `app/features/<feature>/tests`, run by
    `pytest` with the rest.
 
+## Majors: partner tournaments with prizes
+`app/features/majors`; flag `majors`. A major is a big public tournament run with a partner (a festival, a company, a
+community), with real prizes for the top places. It is data, not code, so the next collaboration is a copy with the
+words changed.
+- **What it holds:** an address (`start.ng/majors/<slug>`), a title and tagline, the partner (name, link, logo), a
+  button to the partner ("Get tickets"), prizes by place (1 to 10), 1 to 50 games that have leaderboards (the admin picks how many), a start and
+  an end (1 hour to 45 days).
+- **How it runs:** an admin makes it as a draft, looks at it, then publishes it. Players enter on its page (before it
+  starts, or while it runs). An entrant's runs on its games inside the window count; their best run in each game is
+  kept. Each game gives the daily tournament's 10/7/5/3/1 points by place; most points wins, then most games won, then
+  whoever got there first. Runs arrive through `score_submitted`, so games need no changes. Nothing here gives global
+  points, XP or coins. Standings are worked out when someone looks, so nothing runs on a timer.
+- **Fair play:** runs before entering, before the start or after the end never count. An admin can take an entrant out
+  of the running with a note (their runs stop counting and showing) and put them back; both are in the activity log.
+  Once it has started, its games, start and address are locked; the words, prizes and end can still change.
+- **Templates:** `app/features/majors/templates/*.json` are ready-made majors (`collab.json` is the blank one,
+  `techemberfest.json` the first). Each is `{label, note, major}` where `major` is the body of `POST /admin/majors`.
+  To add one, add a file. Any major can also be copied (`POST /admin/majors/{slug}/copy`), and the admin list gives
+  each major's `template` to save as JSON.
+- **API:** `GET /majors` (published: running, upcoming, ended), `GET /majors/{slug}` (the page: partner, prizes, each
+  game's top 10 and the signed-in entrant's own run in `mine`, standings, `me`, `played`, and `winners` once it ends),
+  `POST /majors/{slug}/enter`, `DELETE /majors/{slug}/entry` (only before it starts).
+  Admin (`majors.manage`): `GET /admin/majors` (drafts too, with winners' emails once it ends, to send prizes),
+  `GET /admin/majors/templates`, `POST /admin/majors`, `GET /admin/majors/{slug}` (preview a draft),
+  `PUT /admin/majors/{slug}`, `POST .../publish`, `POST .../unpublish`, `POST .../copy`, `GET .../entries`,
+  `POST .../entries/{user_id}/remove {note}`, `POST .../entries/{user_id}/restore`, `DELETE /admin/majors/{slug}`.
+- **Not yet:** a server-written page for search engines and link previews, and emails to winners (an admin emails
+  them from the list for now).
+
 ## Progress Engine (PRD D1)
 `app/features/progress`; flag `progress` (off by default; with it off, scores behave exactly as before and nothing is logged).
 - **Run log:** with the flag on, every `POST /games/{name}/scores` is logged in `runs` (not only personal bests), the player's
@@ -336,10 +365,12 @@ names refused). Needs `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY
   email.broadcast("new_games", "weekly_digest", {...})          # everyone on a topic, visitors too
   ```
   Escape anything from players with `email.esc()`. `notify()` does nothing while the flag is off.
-- **Topics:** `tournament`, `results`, `records`, `new_games`, `follows`, `newsletter`. Signed-in players choose theirs;
-  visitors can ask for `tournament`, `new_games` and `newsletter`, and confirm by a link first (double opt-in).
+- **Topics:** `tournament`, `reminder`, `results`, `records`, `new_games`, `follows`, `newsletter`. Signed-in players
+  choose theirs; visitors can ask for `tournament`, `new_games` and `newsletter`, and confirm by a link first (double
+  opt-in).
 - **One email a day:** notes wait a few minutes (`EMAIL_MERGE_MINUTES`); notes for the same player that day join the
-  waiting email. After it's sent, more notes that day are dropped and logged as `capped`.
+  waiting email. After it's sent, more notes that day are dropped and logged as `capped`. A kind registered with
+  `capped=False` skips this: the `reminder` topic's email goes out at once, 10 minutes before the tournament starts.
 - **Every email** has a "choose your emails" link and one-click unsubscribe (a link, plus the `List-Unsubscribe` and
   `List-Unsubscribe-Post` headers).
 - **The outbox** (`email_outbox`) keeps every email. A background loop sends what's due every 30 seconds and retries
