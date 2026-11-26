@@ -44,7 +44,11 @@ def env(monkeypatch):
         db.add(Game(name="hangout", owner_id=ada.id, repo_url="https://github.com/ada/hangout"))
         db.commit()
         ids = {"ada": ada.id, "tunde": tunde.id}
-    yield TestClient(app), ids
+    # One client for the whole test, entered, so every websocket shares its event loop (as in the rooms tests). Without it each
+    # websocket gets its own loop and thread, a broadcast writes into another player's connection from the wrong loop, and
+    # now and then that player never wakes up: the test hangs until CI's 15-minute limit.
+    with TestClient(app) as client:
+        yield client, ids
     app.dependency_overrides.clear()
 
 

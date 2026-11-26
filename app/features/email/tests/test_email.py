@@ -201,3 +201,13 @@ def test_admin_outbox_and_flag(env, monkeypatch):
     assert client.get("/email/me", headers=tokens["ada"]).status_code == 404
     client.put("/email/me", json={"topics": ["results"]}, headers=tokens["ada"])
     assert service.notify(ids["ada"], "test_result", {"place": 1}) is False
+
+
+def test_signed_in_players_can_ask_for_the_tournament_reminder(env):
+    client, tokens, ids, Session = env
+    me = client.put("/email/me", json={"topics": ["reminder"]}, headers=tokens["ada"]).json()
+    assert [t["key"] for t in me["topics"] if t["on"]] == ["reminder"]
+    me = client.put("/email/me", json={"topics": []}, headers=tokens["ada"]).json()  # and turn it off again
+    assert not any(t["on"] for t in me["topics"])
+    # visitors can't: a reminder is for players with an account
+    assert client.post("/email/subscribe", json={"email": "fan@example.com", "topics": ["reminder"]}).status_code == 422

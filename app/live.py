@@ -36,6 +36,7 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
+import anyio
 import jwt
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -241,4 +242,8 @@ async def run_player(room: Room, player: Player) -> None:
         if room.players.get(player.id) is player:  # not already replaced by a newer connection
             del room.players[player.id]
             room.free_seat(player.id)  # gone from the park, seat and all
-            await room.broadcast({"type": "leave", "id": player.id, "seat": None})
+            # Everyone must hear that they left, even when this handler is being cancelled right after the disconnect
+            # (Starlette's test client does that, and so does a server shutting down). Unshielded, the cancel could land
+            # first and the "leave" never went out, so other players kept a ghost in the park.
+            with anyio.CancelScope(shield=True):
+                await room.broadcast({"type": "leave", "id": player.id, "seat": None})

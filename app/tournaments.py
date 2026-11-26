@@ -17,6 +17,7 @@ import random
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from typing import Callable
 
 from sqlalchemy import delete, exists, func, select
 from sqlalchemy.exc import IntegrityError
@@ -101,10 +102,33 @@ def pick_games(db: Session, starts_at: datetime, rng: random.Random | None = Non
     return picked
 
 
+# Features can pause the daily tournament for a while (majors do, so a partner tournament has the stage to itself). Each check
+# gets (db, start, end) and says whether anything that pauses it overlaps that time; a moment is start == end.
+_pauses: list[Callable[[Session, datetime, datetime], bool]] = []
+
+
+def pause_when(check: Callable[[Session, datetime, datetime], bool]) -> Callable[[Session, datetime, datetime], bool]:
+    """Decorator for a feature's check: while it says yes, there is no daily tournament (none is served, none is made)."""
+    _pauses.append(check)
+    return check
+
+
+def paused(db: Session, start: datetime, end: datetime) -> bool:
+    return any(check(db, start, end) for check in _pauses)
+
+
+def paused_throughout(db: Session, start: datetime, end: datetime) -> bool:
+    """Paused for the whole window (at its first and its last second): no point making that day's tournament at all.
+    A window that is only partly paused is still made; it just isn't served while the pause lasts."""
+    last = end - timedelta(seconds=1)
+    return paused(db, start, start) and paused(db, last, last)
+
+
 def running(db: Session, at: datetime | None = None) -> Tournament | None:
-    """The tournament running now, if it has been made (never makes one)."""
+    """The tournament running now, if it has been made (never makes one). None while the daily tournament is paused."""
     at = at or now()
-    return db.scalar(select(Tournament).where(Tournament.starts_at <= at, Tournament.ends_at > at))
+    found = db.scalar(select(Tournament).where(Tournament.starts_at <= at, Tournament.ends_at > at))
+    return None if found is not None and paused(db, at, at) else found
 
 
 def current(db: Session, at: datetime | None = None) -> Tournament | None:
@@ -116,6 +140,10 @@ def current(db: Session, at: datetime | None = None) -> Tournament | None:
     if found:
         return found
     starts_at, ends_at = window(at)
+    if paused(db, at, at):  # a major is on: no daily tournament until it ends
+        return None
+    if paused_throughout(db, starts_at, ends_at):
+        return None
     games = pick_games(db, starts_at)
     if len(games) < settings.tournament_min_games:
         return None
@@ -141,7 +169,7 @@ def ahead(db: Session, at: datetime | None = None) -> list[Tournament]:
         out.append(t)
     next_start, next_end = window(window(at)[1])
     nxt = db.scalar(select(Tournament).where(Tournament.starts_at == next_start))
-    if nxt is None:
+    if nxt is None and not paused_throughout(db, next_start, next_end):
         games = pick_games(db, next_start)
         if len(games) >= settings.tournament_min_games:
             nxt = Tournament(starts_at=next_start, ends_at=next_end,

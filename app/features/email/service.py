@@ -8,7 +8,8 @@
 notify() never sends straight away: it adds a note to the player's email for the day, and the background sender
 (send_due) renders and sends it a few minutes later. One email per player per day (the cap): notes that arrive while
 the day's email is still waiting join it; notes after it went out are dropped and logged as "capped". Players only
-get topics they opted into, and every email has a one-click unsubscribe.
+get topics they opted into, and every email has a one-click unsubscribe. A kind registered with capped=False (the
+tournament reminder) goes out at once in its own email, outside the cap: it only matters before a set time.
 """
 import html
 import logging
@@ -34,6 +35,7 @@ NAME = "email"
 # What players can opt into (PRD H1). Labels are what the settings page shows.
 TOPICS: dict[str, str] = {
     "tournament": "The daily tournament: when it starts and ends",
+    "reminder": "A reminder 10 minutes before the daily tournament starts",
     "results": "How you did in a tournament",
     "records": "When someone beats your record",
     "new_games": "New games, once a week",
@@ -77,15 +79,16 @@ Render = Callable[[dict], Note]
 class Kind:
     topic: str | None  # None: sent whatever the player opted into (confirmations, test emails), outside the cap
     render: Render
+    capped: bool = True  # False: an opted-in topic that is sent at once, outside the 1-a-day cap (the reminder)
 
 
 KINDS: dict[str, Kind] = {}
 
 
-def register_kind(kind: str, topic: str | None, render: Render) -> None:
+def register_kind(kind: str, topic: str | None, render: Render, capped: bool = True) -> None:
     if topic is not None and topic not in TOPICS:
         raise KeyError(f'Unknown email topic "{topic}". Topics: {", ".join(TOPICS)}')
-    KINDS[kind] = Kind(topic, render)
+    KINDS[kind] = Kind(topic, render, capped)
 
 
 def esc(value) -> str:
@@ -243,7 +246,7 @@ def mark_bad(db: Session, email: str, reason: str) -> bool:
 
 def _queue(db: Session, sub: Subscriber, kind: str, data: dict) -> Email:
     """Add a note to the subscriber's email: today's waiting one (the cap), or a new one."""
-    capped = KINDS[kind].topic is not None
+    capped = KINDS[kind].topic is not None and KINDS[kind].capped
     day = today()
     note = {"kind": kind, "data": data}
     if capped:
@@ -514,6 +517,11 @@ async def run_forever() -> None:
             except Exception:
                 db.rollback()
                 log.exception("Tournament emails failed")
+            try:
+                tournament_mail.remind(db)  # the reminder, once, 10 minutes before the next one starts
+            except Exception:
+                db.rollback()
+                log.exception("Tournament reminders failed")
             return send_due(db)
 
     while True:
