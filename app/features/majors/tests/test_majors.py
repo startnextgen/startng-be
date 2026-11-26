@@ -306,3 +306,32 @@ def test_runs_stop_counting_while_the_flag_is_off(env, monkeypatch):
     assert client.get("/majors/techemberfest").json()["standings"] == []
     play(client, tokens, "ada", "g0", 120)
     assert [s["name"] for s in client.get("/majors/techemberfest").json()["standings"]] == ["Ada"]
+
+
+def test_a_major_can_have_a_card_picture(env):
+    client, tokens, clock = env
+    picture = "https://techemberfest.com/images/photos/stage.webp"
+    assert client.post("/admin/majors", json=body(image_url="http://insecure.example.com/a.png"), headers=tokens["boss"]).json()["errors"][0]["code"] == "link"
+    made = make(client, tokens, image_url=picture)
+    assert made["image_url"] == picture and made["template"]["image_url"] == picture
+    assert client.get("/majors").json()[0]["image_url"] == picture  # the homepage card reads it from the list
+    assert make(client, tokens, slug="no-picture")["image_url"] is None  # optional
+
+
+def test_the_daily_tournament_stops_while_a_major_runs(env):
+    client, tokens, clock = env
+    make(client, tokens)  # published, runs from NOW + 1 day to NOW + 8 days
+    assert client.get("/tournaments/current").json() is not None  # before the major: the daily tournament is on
+    clock.at = NOW + timedelta(days=2)
+    assert client.get("/tournaments/current").json() is None  # during it: no daily tournament, served or made
+    clock.at = NOW + timedelta(days=4, hours=12)
+    assert client.get("/tournaments/current").json() is None
+    clock.at = NOW + timedelta(days=9)
+    assert client.get("/tournaments/current").json() is not None  # after it: back by itself
+
+
+def test_a_draft_major_does_not_stop_the_daily_tournament(env):
+    client, tokens, clock = env
+    make(client, tokens, publish=False)
+    clock.at = NOW + timedelta(days=2)
+    assert client.get("/tournaments/current").json() is not None

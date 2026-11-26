@@ -18,6 +18,7 @@ class MajorIn(BaseModel):
     partner_name: str = Field(min_length=2, max_length=60)
     partner_url: str | None = Field(default=None, max_length=300)
     partner_logo_url: str | None = Field(default=None, max_length=300)
+    image_url: str | None = Field(default=None, max_length=300)  # the homepage card's picture (https)
     cta_label: str | None = Field(default=None, max_length=40)
     cta_url: str | None = Field(default=None, max_length=300)
     prizes: list[PrizeIn] = Field(min_length=1, max_length=10)
@@ -94,6 +95,7 @@ class SummaryOut(BaseModel):
     title: str
     tagline: str
     partner: PartnerOut
+    image_url: str | None = None  # the homepage card's picture, if the admin gave one
     prizes: list[PrizeOut]
     starts_at: datetime
     ends_at: datetime

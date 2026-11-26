@@ -24,6 +24,8 @@ class Major(Base):
     partner_name: Mapped[str] = mapped_column(String(60))
     partner_url: Mapped[str | None] = mapped_column(String(300))
     partner_logo_url: Mapped[str | None] = mapped_column(String(300))
+    # A picture for the homepage card (https), shown on its side and fading into it. Optional.
+    image_url: Mapped[str | None] = mapped_column(String(300))
     # The button that sends players to the partner ("Get tickets").
     cta_label: Mapped[str | None] = mapped_column(String(40))
     cta_url: Mapped[str | None] = mapped_column(String(300))

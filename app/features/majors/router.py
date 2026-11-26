@@ -32,7 +32,7 @@ def _standing(st: service.Standing) -> StandingOut:
 def summary(db: Session, m: Major) -> dict:
     return dict(
         slug=m.slug, title=m.title, tagline=m.tagline,
-        partner=PartnerOut(name=m.partner_name, url=m.partner_url, logo_url=m.partner_logo_url),
+        partner=PartnerOut(name=m.partner_name, url=m.partner_url, logo_url=m.partner_logo_url), image_url=m.image_url,
         prizes=[PrizeOut(**p) for p in m.prizes], starts_at=tournaments.utc(m.starts_at), ends_at=tournaments.utc(m.ends_at),
         state=service.state(m), entrants=service.entrant_count(db, m), games=[g.game_name for g in m.games],
     )
