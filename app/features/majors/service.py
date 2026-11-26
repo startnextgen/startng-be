@@ -106,7 +106,7 @@ def _check(db: Session, fields: dict, games: list[str], at: datetime, current_en
         raise Refused("duration", "A major runs from 1 hour to 45 days.")
     if f["ends_at"] <= at and f["ends_at"] != current_end:
         raise Refused("ends_at", "The end can't be in the past.")
-    for key, what in (("partner_url", "partner's link"), ("partner_logo_url", "logo"), ("image_url", "card picture"), ("cta_url", "button's link")):
+    for key, what in (("partner_url", "partner's link"), ("partner_logo_url", "logo"), ("image_url", "card picture"), ("share_image_url", "link preview picture"), ("cta_url", "button's link")):
         f[key] = _http(f.get(key), what)
     if bool(f.get("cta_label")) != bool(f.get("cta_url")):
         raise Refused("cta", "The button needs both its words and its link, or neither.")
@@ -172,6 +172,7 @@ def as_template(m: Major) -> dict:
     return {
         "slug": m.slug, "title": m.title, "tagline": m.tagline, "about": m.about,
         "partner_name": m.partner_name, "partner_url": m.partner_url, "partner_logo_url": m.partner_logo_url, "image_url": m.image_url,
+        "share_image_url": m.share_image_url,
         "cta_label": m.cta_label, "cta_url": m.cta_url, "prizes": list(m.prizes),
         "games": [g.game_name for g in m.games],
         "starts_at": tournaments.utc(m.starts_at).isoformat(), "ends_at": tournaments.utc(m.ends_at).isoformat(),

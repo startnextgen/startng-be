@@ -1,4 +1,4 @@
-"""Majors' own tables. Migration: alembic/versions/0050_majors.py."""
+"""Majors' own tables. Migrations: alembic/versions/0050_majors.py, 0051_majors_image.py, 0052_majors_share_image.py."""
 from datetime import datetime, timezone
 
 from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
@@ -26,6 +26,9 @@ class Major(Base):
     partner_logo_url: Mapped[str | None] = mapped_column(String(300))
     # A picture for the homepage card (https), shown on its side and fading into it. Optional.
     image_url: Mapped[str | None] = mapped_column(String(300))
+    # The picture link previews show (X, WhatsApp), 1200x630 (https). Optional: without it one is drawn from the
+    # major's own details (share_image.py).
+    share_image_url: Mapped[str | None] = mapped_column(String(300))
     # The button that sends players to the partner ("Get tickets").
     cta_label: Mapped[str | None] = mapped_column(String(40))
     cta_url: Mapped[str | None] = mapped_column(String(300))
