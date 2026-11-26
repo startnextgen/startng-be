@@ -19,6 +19,7 @@ class MajorIn(BaseModel):
     partner_url: str | None = Field(default=None, max_length=300)
     partner_logo_url: str | None = Field(default=None, max_length=300)
     image_url: str | None = Field(default=None, max_length=300)  # the homepage card's picture (https)
+    share_image_url: str | None = Field(default=None, max_length=300)  # link previews' picture (https); drawn if empty
     cta_label: str | None = Field(default=None, max_length=40)
     cta_url: str | None = Field(default=None, max_length=300)
     prizes: list[PrizeIn] = Field(min_length=1, max_length=10)
@@ -117,6 +118,10 @@ class MajorOut(SummaryOut):
     standings: list[StandingOut]
     me: StandingOut | None
     winners: list[WinnerOut]  # empty until it ends
+    # What link previews and search engines are given (the same as its server-written page, server_page.py)
+    share_title: str
+    share_text: str
+    share_image: str  # the admin's own picture, or the one drawn from its details
 
 
 class AdminWinnerOut(WinnerOut):

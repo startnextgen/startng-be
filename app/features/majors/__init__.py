@@ -6,7 +6,7 @@ Players enter on the major's own page, start.ng/majors/<slug>; from then on thei
 daily tournament's 10/7/5/3/1 points per game. Nothing here gives global points, XP or coins."""
 from fastapi import APIRouter
 
-from . import admin_router, service  # noqa: F401  (service subscribes to score_submitted)
+from . import admin_router, server_page, service  # noqa: F401  (service subscribes to score_submitted)
 from .router import router as _players
 
 NAME = "majors"  # the feature flag
@@ -17,3 +17,4 @@ PERMISSIONS: dict[str, str] = {
 router = APIRouter()
 router.include_router(_players)
 router.include_router(admin_router.router)
+router.include_router(server_page.router)  # /pages/majors/<slug> and /majors/<slug>/share.jpg

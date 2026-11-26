@@ -11,7 +11,7 @@ from sqlalchemy.pool import StaticPool
 from app import tournaments
 from app.config import settings
 from app.db import Base, get_db
-from app.features.majors import service
+from app.features.majors import service, share_image
 from app.main import app
 from app.models import Game, User
 from app.security import create_token
@@ -335,3 +335,87 @@ def test_a_draft_major_does_not_stop_the_daily_tournament(env):
     make(client, tokens, publish=False)
     clock.at = NOW + timedelta(days=2)
     assert client.get("/tournaments/current").json() is not None
+
+
+# ---- link previews and search engines: the server-written page and the drawn picture
+
+SHELL = '<html><head><!--seo--><title>x</title><!--/seo--></head><body><div id="root"></div></body></html>'
+
+
+@pytest.fixture
+def shell(monkeypatch):
+    from app.routers import pages
+    monkeypatch.setattr(pages, "_get_shell", lambda: SHELL)
+    monkeypatch.setattr(share_image, "_picture", lambda link: None)  # no fetching in tests
+
+
+def test_the_server_written_page_carries_the_major(env, shell):
+    client, tokens, clock = env
+    make(client, tokens, title="Tech Ember Fest")
+    r = client.get("/pages/majors/techemberfest")
+    assert r.status_code == 200
+    html = r.text
+    assert "<title>Tech Ember Fest × start.ng</title>" in html  # the partner's name is the title, so it isn't said twice
+    assert "Top 3 each win Solo ticket. Play 2 games on start.ng, Sat 21 – Sat 28 Nov (Nigeria time)." in html
+    assert 'property="og:image" content="https://api.start.ng/majors/techemberfest/share.jpg?v=' in html
+    assert 'name="twitter:card" content="summary_large_image"' in html
+    assert '"@type": "Event"' in html and '<a href="/games/g0">' in html and "<h1>Tech Ember Fest</h1>" in html
+    page = client.get("/majors/techemberfest").json()  # the website sets the same tags once it loads
+    assert page["share_title"] == "Tech Ember Fest × start.ng" and page["share_image"].startswith("https://api.start.ng/majors/techemberfest/share.jpg?v=")
+    assert "https://start.ng/majors/techemberfest" in client.get("/pages/sitemap.xml").text
+
+
+def test_a_draft_or_missing_major_has_no_page(env, shell):
+    client, tokens, clock = env
+    make(client, tokens, publish=False)
+    for slug in ("techemberfest", "nothing-here"):
+        r = client.get(f"/pages/majors/{slug}")
+        assert r.status_code == 404 and 'content="noindex, nofollow"' in r.text
+        assert client.get(f"/majors/{slug}/share.jpg").status_code == 404
+    assert "/majors/techemberfest" not in client.get("/pages/sitemap.xml").text
+
+
+def test_the_drawn_preview_picture(env, shell):
+    client, tokens, clock = env
+    make(client, tokens)
+    r = client.get("/majors/techemberfest/share.jpg")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg"
+    from PIL import Image
+    import io
+    assert Image.open(io.BytesIO(r.content)).size == (1200, 630)
+    before = client.get("/majors/techemberfest").json()["share_image"]
+    edited = body(tagline="New words that aren't on the picture.")
+    assert client.put("/admin/majors/techemberfest", json=edited, headers=tokens["boss"]).status_code == 200
+    assert client.get("/majors/techemberfest").json()["share_image"] == before  # the tagline isn't drawn, so the same picture
+    edited["title"] = "Ember Cup"
+    assert client.put("/admin/majors/techemberfest", json=edited, headers=tokens["boss"]).status_code == 200
+    assert client.get("/majors/techemberfest").json()["share_image"] != before  # a new address, so previews fetch it again
+
+
+def test_the_admin_can_give_their_own_preview_picture(env, shell):
+    client, tokens, clock = env
+    assert client.post("/admin/majors", json=body(share_image_url="http://example.com/a.png"), headers=tokens["boss"]).json()["errors"][0]["code"] == "link"
+    own = "https://techemberfest.com/images/flyer.png"
+    made = make(client, tokens, share_image_url=own)
+    assert made["template"]["share_image_url"] == own  # copied with the template
+    assert f'property="og:image" content="{own}"' in client.get("/pages/majors/techemberfest").text
+    assert client.get("/majors/techemberfest").json()["share_image"] == own
+
+
+def test_the_dates_on_the_picture():
+    from types import SimpleNamespace
+    at = lambda *a: datetime(*a, tzinfo=timezone.utc)
+    # Fri 27 Nov 00:00 to Mon 30 Nov 00:00, Nigeria time: it ends as Sunday does
+    assert share_image.dates(SimpleNamespace(starts_at=at(2026, 11, 26, 23), ends_at=at(2026, 11, 29, 23))) == "Fri 27 – Sun 29 Nov"
+    assert share_image.dates(SimpleNamespace(starts_at=at(2026, 11, 29, 23), ends_at=at(2026, 12, 2, 23))) == "Mon 30 Nov – Wed 2 Dec"
+    assert share_image.dates(SimpleNamespace(starts_at=at(2026, 12, 5, 9), ends_at=at(2026, 12, 5, 18))) == "Sat 5 Dec"
+
+
+def test_pictures_are_only_fetched_from_public_https_addresses(monkeypatch):
+    fetched = []
+    monkeypatch.setattr(share_image.requests, "get", lambda *a, **k: fetched.append(a) or None)
+    for addr, link in (("127.0.0.1", "https://localhost/a.png"), ("10.0.0.5", "https://intranet.example/a.png"),
+                       ("169.254.169.254", "https://metadata.example/a.png"), ("93.184.216.34", "http://example.com/a.png")):
+        monkeypatch.setattr(share_image.socket, "getaddrinfo", lambda *a, addr=addr, **k: [(2, 1, 6, "", (addr, 443))])
+        assert share_image._download(link) is None
+    assert fetched == []  # none of them were asked for

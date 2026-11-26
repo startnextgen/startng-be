@@ -9,7 +9,7 @@ from ...models import User
 from ...routers.games import _cover_url, _player_name
 from ...security import current_user, optional_user
 from ...storage import game_url
-from . import service
+from . import server_page, service, share_image
 from .models import Major
 from .schemas import GameOut, MajorOut, PartnerOut, PrizeOut, RunOut, StandingOut, SummaryOut, WinnerOut
 
@@ -60,6 +60,7 @@ def detail(db: Session, m: Major, user: User | None) -> MajorOut:
         entered=mine is not None, removed=bool(mine and mine.removed), played=sum(1 for g in game_boards if g.mine),
         game_boards=game_boards, standings=[_standing(st) for st in res.standings[:TOP_STANDINGS]],
         me=_standing(me) if me else None,
+        share_title=server_page.title(m), share_text=server_page.description(m), share_image=share_image.url(m),
         winners=[WinnerOut(place=p["place"], prize=p["prize"], player_id=st.user.id, name=_player_name(st.user),
                            color=_color(st.user), points=st.points) for p, st in service.winners(m, res)],
     )
